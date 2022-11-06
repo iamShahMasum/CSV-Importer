@@ -1,0 +1,21 @@
+{
+    "name": "masum/api",
+    "autoload": {
+        "psr-4": {
+            "api\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Shah Masum Zaman",
+            "email": "shahmasumzaman@gmail.com"
+        }
+    ],
+    "require": {
+        "slim/slim": "3.*",
+        "goodby/csv": "*"
+    },
+    "scripts": {
+        "start": "php -S localhost:8080"
+    }
+}
