@@ -7,32 +7,41 @@ namespace api;
 class Db
 {
     protected $db;
-    private $table;
-    private $rowId;
+    protected $tmpTable;
 
     /**
-     * Db constructor.
+     * Db connection on init.
      */
-    public function __construct($table = null, $rowId = null)
+    public function __construct()
     {
         global $db;
-        $this->table = $table;
-        $this->rowId = $rowId;
         $this->db = new \mysqli($db["HOST"], $db["USER"], $db["PASS"], $db["DB"]);
+        $this->tmpTable = "tmp_excel_data";
     }
 
+    /**
+     * database connection close on task done
+     */
     public function __destruct()
     {
         $this->db->close();
     }
 
-    public function createTable($fieldArray)
+    /**
+     * @param $fieldArray
+     * @return bool|\mysqli_result
+     */
+    public function createTmpTable($fieldArray)
     {
         $keyArray = $this->formatKeys($fieldArray);
-        $keyString = $this->formatSql($keyArray);
-        return $this->db->query("CREATE TABLE IF NOT EXISTS data($keyString)");
+        $keyString = $this->formatCreateSql($keyArray);
+        return $this->db->query("CREATE TABLE IF NOT EXISTS $this->tmpTable($keyString)");
     }
 
+    /**
+     * @param $fields
+     * @return array
+     */
     protected function formatKeys($fields)
     {
         $formattedFields = array();
@@ -46,7 +55,11 @@ class Db
         return $formattedFields;
     }
 
-    protected function formatSql($keyArray)
+    /**
+     * @param $keyArray
+     * @return string
+     */
+    protected function formatCreateSql($keyArray)
     {
         $keyString = "";
         foreach ($keyArray as $key => $value) {
@@ -72,13 +85,12 @@ class Db
      */
     protected function insertRow($tableName, $tabelFields, $row)
     {
-
         $keys = array();
         $values = array();
 
         foreach ($tabelFields as $index => $value) {
             $keys[] = '`' . $value . '`';
-            $values[] = str_replace(['/', '*', '".'], '', "'" . $row[$index] . "'");
+            $values[] = "'" . $row[$index] . "'";
         }
         $keys = implode(',', $keys);
         $values = implode(',', $values);
@@ -96,7 +108,7 @@ class Db
      * @param null $customWhere
      * @return int
      */
-    protected function updateRow($data, $customWhere = null)
+    protected function updateRow($tableName, $rowId, $data, $customWhere = null)
     {
         $updateQuery = ' ';
         $count = 0;
@@ -110,12 +122,25 @@ class Db
             }
         }
         $customWhere = $customWhere != null ? " AND " . $customWhere : " ";
-        $sql = "UPDATE " . $this->table . " SET " . $updateQuery . " WHERE `id` = '$this->rowId' " . $customWhere . " ";
+        $sql = "UPDATE " . $tableName . " SET " . $updateQuery . " WHERE `id` = '$rowId' " . $customWhere . " ";
         if ($this->db->query($sql)) {
             return 200;
         } else {
             return 500;
         }
+    }
+
+
+    /**
+     * @param $value
+     * @return string|string[]
+     */
+    protected function formatDbValue($value)
+    {
+        return str_replace("'", "\\'",
+            str_replace('"', '\\"',
+                str_replace(['/', '*', '".'], ' ', $value)
+            ));
     }
 
 

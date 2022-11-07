@@ -9,8 +9,14 @@ use Exception;
 class FileReader extends Db
 {
 
-    private $tableFields = array();
+    private $tmpTableFields = array();
 
+    /**
+     * @param $file
+     * @param $startFrom
+     * @param $endTo
+     * @return bool
+     */
     public function read($file, $startFrom, $endTo)
     {
         try {
@@ -51,8 +57,7 @@ class FileReader extends Db
             $handle = fopen($file, "r");
             $i = 0;
             while (!feof($handle)) {
-                $paramArray = array(fgetcsv($handle, $chunk_size), &$handle, $i);
-                call_user_func_array($callback, $paramArray);
+                call_user_func_array($callback, [fgetcsv($handle, $chunk_size), &$handle, $i]);
                 $i++;
             }
             fclose($handle);
@@ -67,30 +72,24 @@ class FileReader extends Db
     {
         if ($data)
             if ($iteration == 0) {
-                $this->tableFields = $this->formatKeys($data);
-                $this->createTable($data);
+                $this->tmpTableFields = $this->formatKeys($data);
+                $this->createTmpTable($data);
             } else {
                 $formatedRow = array();
-                foreach ($this->tableFields as $index => $item) {
+                foreach ($this->tmpTableFields as $index => $item) {
                     if ('date' == strtolower($item))
                         array_push($formatedRow, date('Y-m-d', strtotime($data[$index])));
+                    elseif ('remarks' == strtolower($item))
+                        array_push($formatedRow, $this->formatDbValue($data[$index]));
                     else
                         array_push($formatedRow, $data[$index]);
                 }
 
                 try {
-                    $this->insertRow('data', $this->tableFields, $formatedRow);
+                    return $this->insertRow($this->tmpTable, $this->tmpTableFields, $formatedRow);
                 } catch (Exception $exception) {
                     echo $exception->getMessage();
                 }
             }
-    }
-
-
-    public function pushToTextFile($data)
-    {
-        $file = 'test.txt';
-        $content = json_encode($data);
-        file_put_contents($file, $content . PHP_EOL, FILE_APPEND | LOCK_EX);
     }
 }
